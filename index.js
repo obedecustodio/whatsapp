@@ -1,6 +1,8 @@
 const wppconnect = require('@wppconnect-team/wppconnect');
 const fs = require('fs')
-const axios = require('axios');
+const { writeFile } = require('fs/promises');
+const sox = require('sox');
+const glob = require('glob');
 
 
 wppconnect.create({
@@ -67,66 +69,28 @@ function start(client) {
             client.startTyping(message.from)
 
             if (message.type === 'ptt') {
-                // const { id } = message
-                // console.log(id)
-                // const media = await client.downloadMedia(id)
-                // const filepath = `./audios/${message.id}.ogg`
-                // const buffer = Buffer.from(media, 'base64')
+                const buffer = await client.decryptFile(message);
+                const res = await transcribeAudio(buffer)
 
-                // fs.writeFileSync(filepath, media)
+                messages.push({ role: 'user', content: res })
 
-                const { id } = message
-                console.log(id)
-                const base64String = await client.downloadMedia(id)
-                // Assuming you have received the Base64 encoded string in a variable named base64String
-                const blob = new Blob([base64String], { type: 'audio/ogg' });
+                client.sendText(message.from, await generateMessage(res, user, messages).then((response) => {
 
-                const filePath = './audios/filename.ogg'; // Change the path and file name accordingly
-
-                // Create a writable stream
-                const writerStream = fs.createWriteStream(filePath);
-
-                // Handle errors
-                writerStream.on('error', function (err) {
-                    console.error('Error writing file:', err);
-                });
-
-                // Handle finish event (file writing completed successfully)
-                writerStream.on('finish', function () {
-                    console.log('File saved successfully!');
-                });
-
-                // Pipe the blob data to the writable stream
-                blob.stream().pipe(writerStream);
-
-                // Function to convert Base64 string to a Blob object
-                // function base64toBlob(base64String) {
-                //     const byteCharacters = atob(base64String.split(',')[1]);
-                //     const byteNumbers = new Array(byteCharacters.length);
-                //     for (let i = 0; i < byteCharacters.length; i++) {
-                //         byteNumbers[i] = byteCharacters.charCodeAt(i);
-                //     }
-                //     const byteArray = new Uint8Array(byteNumbers);
-                //     return new Blob([byteArray], { type: 'audio/ogg' }); // Change the type accordingly
-                // }
-
-                // // Convert Base64 to Blob
-                // const blob = base64toBlob(base64String);
-
-                // // Convert Blob to Buffer (for Node.js)
-                // const buffer = Buffer.from(blob, 'binary');
-
-                // // Define the file path and name
-                // const filePath = './audios/filename.ogg'; // Change the path and file name accordingly
-
-                // // Write the buffer to the file
-                // fs.writeFile(filePath, buffer, (err) => {
-                //     if (err) {
-                //         console.error('Error writing file:', err);
-                //         return;
-                //     }
-                //     console.log('File saved successfully!');
-                // });
+                    const urlRegex = /\((.*?)\)/;
+    
+                    const matches = response.match(urlRegex);
+                    if (matches && matches.length > 1) {
+                        const url = matches[1];
+                        client.sendImage(message.from, url, 'Aqui esta o comunicado')
+    
+                    }
+    
+                    client.sendText(message.from, response);
+                    messages.push({ role: 'assistant', content: response })
+                })
+                    .catch((error) => {
+                        console.error("Error sending message:", error);
+                    }));
 
             }
 
@@ -149,26 +113,28 @@ function start(client) {
 
             if (message.type == "chat") {
                 messages.push({ role: 'user', content: message.body })
+
+                client.sendText(message.from, await generateMessage(message.body, user, messages).then((response) => {
+
+                    const urlRegex = /\((.*?)\)/;
+    
+                    const matches = response.match(urlRegex);
+                    if (matches && matches.length > 1) {
+                        const url = matches[1];
+                        client.sendImage(message.from, url, 'Aqui esta o comunicado')
+    
+                    }
+    
+                    client.sendText(message.from, response);
+                    messages.push({ role: 'assistant', content: response })
+                })
+                    .catch((error) => {
+                        console.error("Error sending message:", error);
+                    }));
             }
 
 
-            client.sendText(message.from, await generateMessage(message, user, messages).then((response) => {
-
-                const urlRegex = /\((.*?)\)/;
-
-                const matches = response.match(urlRegex);
-                if (matches && matches.length > 1) {
-                    const url = matches[1];
-                    client.sendImage(message.from, url, 'Aqui esta o comunicado')
-
-                }
-
-                client.sendText(message.from, response);
-                messages.push({ role: 'assistant', content: response })
-            })
-                .catch((error) => {
-                    console.error("Error sending message:", error);
-                }));
+         
 
             client.stopTyping(message.from)
         }
@@ -207,45 +173,50 @@ async function askBot(prompt, user, messages) {
 
 async function generateMessage(message, user, messages) {
 
-    let response = await askBot(message.body, user, messages).then(res => {
+    let response = await askBot(message, user, messages).then(res => {
 
         if (res == "#exit#") {
             res = 'Desculpe, ocorreu um erro ao responder a sua questão ou o contexto da questão está fora do escopo da EDM. Porfavor pergunte novamente'
         }
 
-        if (typeof (res) == Object) {
+        if (res == '{"error":"Expected a string but received a undefined"}') {
             res = "Ocorreu um erro porfavor tente novamente"
 
         }
-
-
         return res
     })
 
-    // if (response.body === "#exit#") {
-    //     const buttonResponse = {
-    //         body: "Deseja falar com um humano?",
-    //         buttons: [
-    //             {
-    //                 type: "text",
-    //                 label: "Sim",
-    //                 action: "reply",
-    //                 text: "Sim, quero falar com um humano.",
-    //             },
-    //             {
-    //                 type: "text",
-    //                 label: "Não",
-    //                 action: "reply",
-    //                 text: "Não, continuarei interagindo com o bot.",
-    //             },
-    //         ],
-    //     };
-    //     return buttonResponse;
-    // } else {
-    //     return response;
-    // }
 
     messages.push({ role: 'assistant', content: response })
 
     return response
+}
+
+
+async function transcribeAudio(wav) {
+
+    try {
+        // const response = await fetch("http://localhost:5050/audio/transcribe", {
+        const response = await fetch('https://edmbotapi.onrender.com/media/audio/whatsapp/transcribe', {
+            method: "post",
+            credentials: "include",
+            headers: {
+                Authorization:
+                    "dev-aidbuikacalwgdconnamwqirycnvacpaevsbmsoaadaczawacawbbacf-team",
+                "Content-type": "audio/webm"
+            },
+            body: wav,
+
+
+        });
+        const json = await response.json();
+
+
+        return json.text
+
+    } catch (error) {
+        console.log(error)
+    }
+
+
 }

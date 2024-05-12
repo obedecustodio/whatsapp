@@ -11,6 +11,12 @@
   "license": "ISC",
   "dependencies": {
     "@wppconnect-team/wppconnect": "^1.30.2",
-    "axios": "^1.6.8"
+    "audiobuffer-to-wav": "^1.0.0",
+    "axios": "^1.6.8",
+    "cloudmersive-video-api-client": "^2.0.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "glob": "^10.3.14",
+    "sox": "^0.1.0",
+    "xhr": "^2.6.0"
   }
 }
