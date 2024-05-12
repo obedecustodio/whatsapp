@@ -116,6 +116,20 @@ function start(client) {
 
                 client.sendText(message.from, await generateMessage(message.body, user, messages).then((response) => {
 
+                 
+                    // client.sendText(message.from, 'Message with buttons', {
+                    //     useTemplateButtons: true,
+                    //     buttons: [
+                    //       { url: 'https://example.com', text: 'Visit Site' },
+                    //       { phoneNumber: '+123456789', text: 'Call Me' },
+                    //       { id: 'custom_id', text: 'Reply' }
+                    //     ],
+                    //     title: 'Optional Title',
+                    //     footer: 'Optional Footer'
+                    //   });
+
+                      
+
                     const urlRegex = /\((.*?)\)/;
     
                     const matches = response.match(urlRegex);
