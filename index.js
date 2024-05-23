@@ -1,11 +1,6 @@
-const wppconnect = require('@wppconnect-team/wppconnect');
-const fs = require('fs')
-const { writeFile } = require('fs/promises');
-const sox = require('sox');
-const glob = require('glob');
+import { create } from "@wppconnect-team/wppconnect";
 
-
-wppconnect.create({
+create({
     session: 'sessionName',
     catchQR: (base64Qrimg, asciiQR, attempts, urlCode) => {
         console.log('Number of attempts to read the qrcode: ', attempts);
@@ -146,9 +141,6 @@ function start(client) {
                         console.error("Error sending message:", error);
                     }));
             }
-
-
-         
 
             client.stopTyping(message.from)
         }
